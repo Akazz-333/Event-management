@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>EventHub - Premier Event Discovery & Ticketing</title>
+  <title>EventHub - Premier Event & Movie Ticket Booking</title>
   <link rel="stylesheet" href="/css/style.css" />
   <!-- Remixicon Icons -->
   <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet" />
@@ -18,9 +18,9 @@
     </a>
 
     <ul class="nav-links">
-      <li><a class="nav-link active" id="nav-explore" onclick="navigateTo('explore')"><i class="ri-compass-line"></i> Explore Events</a></li>
-      <li><a class="nav-link" id="nav-tickets" onclick="navigateTo('tickets')"><i class="ri-coupon-3-line"></i> My Tickets</a></li>
-      <li id="nav-organizer-item" style="display:none;"><a class="nav-link" id="nav-organizer" onclick="openCreateEventModal()"><i class="ri-add-circle-line"></i> Create Event</a></li>
+      <li><a class="nav-link active" id="nav-explore" onclick="navigateTo('explore')"><i class="ri-compass-line"></i> Explore Events & Movies</a></li>
+      <li><a class="nav-link" id="nav-tickets" onclick="navigateTo('tickets')"><i class="ri-coupon-3-line"></i> My Ticket Wallet</a></li>
+      <li id="nav-organizer-item" style="display:none;"><a class="nav-link" id="nav-organizer" onclick="openCreateEventModal()"><i class="ri-add-circle-line"></i> Publish Listing</a></li>
       <li id="nav-checkin-item" style="display:none;"><a class="nav-link" id="nav-checkin" onclick="navigateTo('checkin')"><i class="ri-qr-scan-line"></i> Venue Scanner</a></li>
     </ul>
 
@@ -32,21 +32,25 @@
   <!-- Main Content Container -->
   <main class="container">
 
-    <!-- EXPLORE EVENTS VIEW -->
+    <!-- EXPLORE EVENTS & MOVIES VIEW -->
     <section id="view-explore">
       <div class="hero">
-        <h1 class="hero-title">Discover & Book Premium Events Nationwide</h1>
-        <p class="hero-subtitle">Access global tech summits, music festivals, executive business forums, and sports championships with instant digital QR passes.</p>
+        <h1 class="hero-title">Discover & Book Movies, Conferences & Live Events</h1>
+        <p class="hero-subtitle">Access global blockbuster movies from sample_mflix, tech summits, music festivals, and sports championships with instant digital QR passes.</p>
       </div>
 
       <div class="filter-bar">
         <div class="search-box">
           <i class="ri-search-line search-icon"></i>
-          <input type="text" id="search-input" class="search-input" placeholder="Search by title, location, category, or venue..." onkeyup="handleSearch()" />
+          <input type="text" id="search-input" class="search-input" placeholder="Search by title, movie name, actor, category, or venue..." onkeyup="handleSearch()" />
         </div>
 
         <div class="category-chips" id="category-chips">
           <button class="chip active" onclick="filterCategory(this, '')">All Categories</button>
+          <button class="chip" onclick="filterCategory(this, 'Movies')"><i class="ri-film-line"></i> Movies</button>
+          <button class="chip" onclick="filterCategory(this, 'Action')">Action</button>
+          <button class="chip" onclick="filterCategory(this, 'Sci-Fi')">Sci-Fi</button>
+          <button class="chip" onclick="filterCategory(this, 'Drama')">Drama</button>
           <button class="chip" onclick="filterCategory(this, 'Technology')">Technology</button>
           <button class="chip" onclick="filterCategory(this, 'Music')">Music</button>
           <button class="chip" onclick="filterCategory(this, 'Business')">Business</button>
@@ -55,16 +59,16 @@
         </div>
       </div>
 
-      <!-- Events Grid -->
+      <!-- Events & Movies Grid -->
       <div id="events-grid" class="events-grid">
         <!-- Rendered dynamically -->
       </div>
     </section>
 
-    <!-- EVENT DETAILS VIEW -->
+    <!-- EVENT / MOVIE DETAILS VIEW -->
     <section id="view-event-detail" style="display: none;">
       <button class="btn btn-secondary btn-sm" style="margin-bottom: 1.5rem;" onclick="navigateTo('explore')">
-        <i class="ri-arrow-left-line"></i> Back to All Events
+        <i class="ri-arrow-left-line"></i> Back to Catalog
       </button>
 
       <div id="event-detail-container">
@@ -74,7 +78,7 @@
 
     <!-- MY TICKETS VIEW -->
     <section id="view-tickets" style="display: none;">
-      <h2 style="font-size: 1.8rem; font-weight: 800; margin-bottom: 1.5rem;"><i class="ri-coupon-3-line" style="color: var(--primary);"></i> My Ticket Wallet</h2>
+      <h2 style="font-size: 1.8rem; font-weight: 800; margin-bottom: 1.5rem;"><i class="ri-coupon-3-line" style="color: var(--primary);"></i> My Digital Ticket Wallet</h2>
       <div id="my-tickets-grid" class="events-grid">
         <!-- Rendered dynamically -->
       </div>
@@ -84,7 +88,7 @@
     <section id="view-login" style="display: none;">
       <div class="glass" style="max-width: 460px; margin: 2rem auto; padding: 2.5rem; border-radius: var(--radius-xl);">
         <h2 style="font-size: 1.8rem; font-weight: 800; margin-bottom: 0.5rem; text-align: center;" id="view-auth-title">Sign In to EventHub</h2>
-        <p style="color: var(--text-secondary); text-align: center; margin-bottom: 1.5rem; font-size: 0.95rem;" id="view-auth-sub">Access your registered tickets, manage event bookings, and view QR passes.</p>
+        <p style="color: var(--text-secondary); text-align: center; margin-bottom: 1.5rem; font-size: 0.95rem;" id="view-auth-sub">Access your registered movie passes, manage event bookings, and view QR tickets.</p>
 
         <form id="view-auth-form" onsubmit="handleViewAuthSubmit(event)">
           <div class="form-group" id="view-name-group" style="display: none;">
@@ -123,14 +127,14 @@
     <!-- VENUE SCANNER VIEW -->
     <section id="view-checkin" style="display: none;">
       <div class="glass" style="max-width: 580px; margin: 1rem auto; padding: 2.5rem; border-radius: var(--radius-xl);">
-        <h2 style="font-size: 1.6rem; font-weight: 800; margin-bottom: 0.5rem;"><i class="ri-qr-scan-line" style="color: var(--accent-cyan);"></i> Venue Entrance Check-In</h2>
+        <h2 style="font-size: 1.6rem; font-weight: 800; margin-bottom: 0.5rem;"><i class="ri-qr-scan-line" style="color: var(--accent-cyan);"></i> Entrance Check-In Scanner</h2>
         <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.95rem;">Enter or scan the attendee ticket code (e.g. <code>EVT-TKT-XXXXXX</code>) to verify registration status.</p>
         
         <div class="form-group">
           <label class="form-label">Ticket Code</label>
           <input type="text" id="checkin-ticket-code" class="form-control" placeholder="EVT-TKT-A9X2M1" style="font-family: monospace; font-size: 1.1rem; text-transform: uppercase;" />
         </div>
-        <button class="btn btn-primary" style="width: 100%;" onclick="submitCheckIn()"><i class="ri-checkbox-circle-line"></i> Verify & Check-In Attendee</button>
+        <button class="btn btn-primary" style="width: 100%;" onclick="submitCheckIn()"><i class="ri-checkbox-circle-line"></i> Verify & Check-In Ticket</button>
 
         <div id="checkin-result" style="margin-top: 1.5rem; display: none;"></div>
       </div>
@@ -200,19 +204,23 @@
   <div class="modal-backdrop" id="create-event-modal" onclick="handleBackdropClick(event, 'create-event-modal')">
     <div class="modal glass">
       <div class="modal-header">
-        <h3 style="font-weight: 800;">Publish New Event</h3>
+        <h3 style="font-weight: 800;">Publish New Listing</h3>
         <button class="modal-close" onclick="closeModal('create-event-modal')">&times;</button>
       </div>
 
       <form id="create-event-form" onsubmit="handleCreateEventSubmit(event)">
         <div class="form-group">
-          <label class="form-label">Event Title</label>
-          <input type="text" id="event-title" class="form-control" placeholder="e.g. AI & Deep Learning Summit 2026" required />
+          <label class="form-label">Listing Title / Movie Name</label>
+          <input type="text" id="event-title" class="form-control" placeholder="e.g. Inception or AI Summit 2026" required />
         </div>
 
         <div class="form-group">
           <label class="form-label">Category</label>
           <select id="event-category" class="form-control" required>
+            <option value="Movies">Movies</option>
+            <option value="Action">Action</option>
+            <option value="Sci-Fi">Sci-Fi</option>
+            <option value="Drama">Drama</option>
             <option value="Technology">Technology</option>
             <option value="Music">Music</option>
             <option value="Business">Business</option>
@@ -222,8 +230,8 @@
         </div>
 
         <div class="form-group">
-          <label class="form-label">Venue / Location</label>
-          <input type="text" id="event-venue" class="form-control" placeholder="e.g. Metro Convention Center, Hall A" required />
+          <label class="form-label">Venue / Cinema Theater</label>
+          <input type="text" id="event-venue" class="form-control" placeholder="e.g. AMC Starlight Theater, Screen 4" required />
         </div>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
@@ -238,18 +246,18 @@
         </div>
 
         <div class="form-group">
-          <label class="form-label">Description</label>
-          <textarea id="event-desc" class="form-control" placeholder="Comprehensive event summary and speaker lineup..." required></textarea>
+          <label class="form-label">Description / Synopsis</label>
+          <textarea id="event-desc" class="form-control" placeholder="Full storyline overview, director, and cast lineup..." required></textarea>
         </div>
 
-        <h4 style="font-size: 1rem; font-weight: 700; margin: 1rem 0 0.5rem;">Initial Ticket Tier Setup</h4>
+        <h4 style="font-size: 1rem; font-weight: 700; margin: 1rem 0 0.5rem;">Ticket Pass Setup</h4>
         <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 0.5rem; margin-bottom: 1rem;">
-          <input type="text" id="ticket-name-1" class="form-control" placeholder="Tier Name" value="General Pass" required />
-          <input type="number" id="ticket-price-1" class="form-control" placeholder="Price ($)" value="49.99" step="0.01" required />
+          <input type="text" id="ticket-name-1" class="form-control" placeholder="Pass Name" value="Standard Cinema Pass" required />
+          <input type="number" id="ticket-price-1" class="form-control" placeholder="Price ($)" value="14.99" step="0.01" required />
           <input type="number" id="ticket-capacity-1" class="form-control" placeholder="Capacity" value="100" required />
         </div>
 
-        <button type="submit" class="btn btn-primary" style="width: 100%;">Publish Event</button>
+        <button type="submit" class="btn btn-primary" style="width: 100%;">Publish Listing</button>
       </form>
     </div>
   </div>
