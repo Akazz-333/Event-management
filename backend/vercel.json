@@ -16,6 +16,10 @@
       "dest": "api/events.ts"
     },
     {
+      "src": "/api/v1/auth/(.*)",
+      "dest": "api/auth.ts"
+    },
+    {
       "src": "/api/v1/(.*)",
       "dest": "api/server.ts"
     },
