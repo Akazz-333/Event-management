@@ -11,6 +11,9 @@ import { AppError } from './utils/appError';
 
 const app = express();
 
+// Trust proxy for Vercel reverse proxy environment
+app.set('trust proxy', 1);
+
 // Security Middlewares with custom CSP for inline attributes support
 app.use(
   helmet({
@@ -27,21 +30,23 @@ app.use(
   })
 );
 
-app.use(cors({ origin: config.corsOrigin, credentials: true }));
+app.use(cors({ origin: '*', credentials: true }));
 
-// Rate Limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 300, // limit each IP to 300 requests per windowMs
-  message: {
-    success: false,
-    error: {
-      message: 'Too many requests from this IP, please try again after 15 minutes.',
-      statusCode: 429,
+// Rate Limiting (Disabled on Vercel serverless to prevent proxy IP crashes)
+if (!process.env.VERCEL) {
+  const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 300,
+    message: {
+      success: false,
+      error: {
+        message: 'Too many requests from this IP, please try again after 15 minutes.',
+        statusCode: 429,
+      },
     },
-  },
-});
-app.use('/api/', limiter);
+  });
+  app.use('/api/', limiter);
+}
 
 // Body Parsing & Static Files
 app.use(express.json());
@@ -55,11 +60,16 @@ app.get('/api-docs.json', (req: Request, res: Response) => {
   res.send(swaggerSpec);
 });
 
+// Health check endpoint
+app.get('/api/v1/health', (req: Request, res: Response) => {
+  res.status(200).json({ status: 'healthy', timestamp: new Date().toISOString() });
+});
+
 // API Routes
 app.use('/api/v1', apiRouter);
 
-// 404 Route Handler for unmatched routes
-app.use('*', (req: Request, res: Response, next: NextFunction) => {
+// 404 Route Handler for unmatched API routes
+app.use('/api/*', (req: Request, res: Response, next: NextFunction) => {
   next(new AppError(`Cannot find endpoint ${req.originalUrl} on this server`, 404));
 });
 
