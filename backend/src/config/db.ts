@@ -1,13 +1,7 @@
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
-import dns from 'dns';
 
 dotenv.config();
-
-try {
-  dns.setDefaultResultOrder('ipv4first');
-  dns.setServers(['8.8.8.8', '8.8.4.4']);
-} catch (e) {}
 
 const ATLAS_DEFAULT_URI = 'mongodb+srv://akazz33333_db_user:sb25102004@cluster0.3gnbcqu.mongodb.net/event_management_db?retryWrites=true&w=majority&appName=Cluster0';
 
