@@ -3,6 +3,7 @@ import { isMongoDB } from '../config/db';
 import { Event as MongoEvent } from '../models/Event';
 import { TicketType as MongoTicketType } from '../models/TicketType';
 import { User as MongoUser } from '../models/User';
+import { Movie as MongoMovie } from '../models/Movie';
 import { AppError } from '../utils/appError';
 import { EventStatus, Role } from '../types';
 
@@ -108,6 +109,64 @@ export class EventService {
     const skip = (page - 1) * limit;
 
     if (isMongoDB()) {
+      const movieCount = await MongoMovie.countDocuments();
+
+      if (movieCount > 0) {
+        const query: any = {};
+        if (params.q) {
+          query.$or = [
+            { title: { $regex: params.q, $options: 'i' } },
+            { plot: { $regex: params.q, $options: 'i' } },
+            { fullplot: { $regex: params.q, $options: 'i' } },
+            { genres: { $regex: params.q, $options: 'i' } },
+          ];
+        }
+        if (params.category) {
+          query.genres = { $regex: params.category, $options: 'i' };
+        }
+
+        const [movies, totalItems] = await Promise.all([
+          MongoMovie.find(query).skip(skip).limit(limit),
+          MongoMovie.countDocuments(query),
+        ]);
+
+        const events = movies.map((m) => {
+          const mObj = m.toJSON() as any;
+          return {
+            id: mObj.id,
+            title: mObj.title,
+            description: mObj.fullplot || mObj.plot || `Directed by ${(mObj.directors || []).join(', ')}. Starring ${(mObj.cast || []).join(', ')}.`,
+            category: (mObj.genres && mObj.genres[0]) || 'Cinema',
+            venue: 'AMC Starlight Theater & IMAX',
+            startDate: mObj.released || new Date(),
+            endDate: new Date((mObj.released ? new Date(mObj.released).getTime() : Date.now()) + (mObj.runtime || 120) * 60000),
+            status: 'PUBLISHED',
+            poster: mObj.poster,
+            imdb: mObj.imdb,
+            directors: mObj.directors,
+            cast: mObj.cast,
+            runtime: mObj.runtime,
+            ticketTypes: [
+              { id: `t1-${mObj.id}`, name: 'Standard Seat Pass', price: 12.99, capacity: 150, soldCount: 15 },
+              { id: `t2-${mObj.id}`, name: 'VIP Recliner Pass', price: 24.99, capacity: 40, soldCount: 8 },
+            ],
+          };
+        });
+
+        const totalPages = Math.ceil(totalItems / limit) || 1;
+        return {
+          events,
+          pagination: {
+            page,
+            limit,
+            totalItems,
+            totalPages,
+            hasNext: page < totalPages,
+            hasPrev: page > 1,
+          },
+        };
+      }
+
       const query: any = {};
 
       if (params.q) {
@@ -188,17 +247,6 @@ export class EventService {
         if (params.endDate) where.startDate.lte = new Date(params.endDate);
       }
 
-      if (params.minPrice !== undefined || params.maxPrice !== undefined) {
-        where.ticketTypes = {
-          some: {
-            price: {
-              ...(params.minPrice !== undefined ? { gte: Number(params.minPrice) } : {}),
-              ...(params.maxPrice !== undefined ? { lte: Number(params.maxPrice) } : {}),
-            },
-          },
-        };
-      }
-
       const sortBy = params.sortBy || 'startDate';
       const order = params.order || 'asc';
 
@@ -236,8 +284,33 @@ export class EventService {
 
   static async getEventById(eventId: string) {
     if (isMongoDB()) {
+      const movie = await MongoMovie.findById(eventId);
+      if (movie) {
+        const mObj = movie.toJSON() as any;
+        return {
+          id: mObj.id,
+          title: mObj.title,
+          description: mObj.fullplot || mObj.plot || `Directed by ${(mObj.directors || []).join(', ')}. Starring ${(mObj.cast || []).join(', ')}.`,
+          category: (mObj.genres && mObj.genres[0]) || 'Cinema',
+          venue: 'AMC Starlight Theater & IMAX',
+          startDate: mObj.released || new Date(),
+          endDate: new Date((mObj.released ? new Date(mObj.released).getTime() : Date.now()) + (mObj.runtime || 120) * 60000),
+          status: 'PUBLISHED',
+          poster: mObj.poster,
+          imdb: mObj.imdb,
+          directors: mObj.directors,
+          cast: mObj.cast,
+          runtime: mObj.runtime,
+          organizer: { id: 'mflix-admin', name: 'Sample MFlix Cinema Network', email: 'support@mflix.com' },
+          ticketTypes: [
+            { id: `t1-${mObj.id}`, name: 'Standard Seat Pass', price: 12.99, capacity: 150, soldCount: 15 },
+            { id: `t2-${mObj.id}`, name: 'VIP Recliner Pass', price: 24.99, capacity: 40, soldCount: 8 },
+          ],
+        };
+      }
+
       const ev = await MongoEvent.findById(eventId).populate('organizerId', 'name email');
-      if (!ev) throw new AppError('Event not found', 404);
+      if (!ev) throw new AppError('Event or movie record not found', 404);
 
       const tiers = await MongoTicketType.find({ eventId });
       const evObj = ev.toJSON() as any;

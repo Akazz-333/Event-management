@@ -23,8 +23,8 @@ const state = {
   myTickets: [],
   searchQuery: '',
   selectedCategory: '',
-  authMode: 'login', // 'login' or 'register' for modal
-  viewAuthMode: 'login', // 'login' or 'register' for dedicated view
+  authMode: 'login',
+  viewAuthMode: 'login',
   selectedEventForBooking: null,
 };
 
@@ -87,12 +87,12 @@ function showEventDetail(eventId) {
   navigateTo('event-detail', eventId);
 }
 
-// Load & Render Event Details Page
+// Load & Render Event / Movie Details Page
 async function loadEventDetail(eventId) {
   const container = document.getElementById('event-detail-container');
   if (!container) return;
 
-  container.innerHTML = '<div style="text-align:center; padding: 4rem;"><i class="ri-loader-4-line ri-spin" style="font-size: 2.5rem; color: var(--primary);"></i><p style="margin-top: 0.5rem; color: var(--text-secondary);">Loading event details...</p></div>';
+  container.innerHTML = '<div style="text-align:center; padding: 4rem;"><i class="ri-loader-4-line ri-spin" style="font-size: 2.5rem; color: var(--primary);"></i><p style="margin-top: 0.5rem; color: var(--text-secondary);">Loading movie & theater details...</p></div>';
 
   try {
     const res = await apiCall(`/events/${eventId}`, 'GET', null, false);
@@ -108,14 +108,48 @@ async function loadEventDetail(eventId) {
       ? Math.min(...ev.ticketTypes.map(t => t.price)) 
       : 0;
 
+    const posterHtml = ev.poster ? `
+      <div style="text-align: center; margin-bottom: 1.5rem;">
+        <img src="${ev.poster}" alt="${ev.title}" style="max-height: 380px; width: auto; border-radius: var(--radius-lg); box-shadow: 0 12px 30px rgba(0,0,0,0.15); border: 1px solid var(--border);" onerror="this.style.display='none'" />
+      </div>
+    ` : '';
+
+    const imdbHtml = ev.imdb && ev.imdb.rating ? `
+      <span style="background: #f59e0b; color: #fff; font-weight: 800; font-size: 0.85rem; padding: 0.25rem 0.6rem; border-radius: var(--radius-sm); display: inline-flex; align-items: center; gap: 0.25rem;">
+        <i class="ri-star-fill"></i> IMDb ${ev.imdb.rating}/10
+      </span>
+    ` : '';
+
+    const directorsHtml = ev.directors && ev.directors.length > 0 ? `
+      <div style="margin-top: 1rem; font-size: 0.95rem; color: var(--text-secondary);">
+        <strong><i class="ri-clapperboard-line" style="color: var(--primary);"></i> Directors:</strong> ${ev.directors.join(', ')}
+      </div>
+    ` : '';
+
+    const castHtml = ev.cast && ev.cast.length > 0 ? `
+      <div style="margin-top: 0.5rem; font-size: 0.95rem; color: var(--text-secondary);">
+        <strong><i class="ri-user-star-line" style="color: var(--accent-purple);"></i> Cast:</strong> ${ev.cast.join(', ')}
+      </div>
+    ` : '';
+
+    const runtimeHtml = ev.runtime ? `
+      <div style="display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.9rem; color: var(--text-muted); font-weight: 600;">
+        <i class="ri-time-line"></i> ${ev.runtime} mins
+      </div>
+    ` : '';
+
     container.innerHTML = `
       <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem; align-items: start;">
         
-        <!-- Left Main Event Information Column -->
+        <!-- Left Main Movie / Event Information Column -->
         <div class="glass" style="padding: 2.5rem; border-radius: var(--radius-xl);">
-          <div style="display: flex; gap: 0.5rem; align-items: center; margin-bottom: 1rem;">
+          ${posterHtml}
+
+          <div style="display: flex; gap: 0.5rem; align-items: center; margin-bottom: 1rem; flex-wrap: wrap;">
             <span class="card-badge" style="margin-bottom: 0;">${ev.category}</span>
             <span class="role-tag role-ORGANIZER">${ev.status || 'PUBLISHED'}</span>
+            ${imdbHtml}
+            ${runtimeHtml}
           </div>
 
           <h1 style="font-size: 2.2rem; font-weight: 800; line-height: 1.25; margin-bottom: 1.25rem; color: var(--text-primary);">
@@ -126,7 +160,7 @@ async function loadEventDetail(eventId) {
             <div style="display: flex; gap: 0.75rem; align-items: flex-start;">
               <i class="ri-calendar-event-line" style="font-size: 1.5rem; color: var(--primary);"></i>
               <div>
-                <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Date & Time</div>
+                <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Showtime / Date</div>
                 <div style="font-weight: 700; font-size: 0.95rem;">${formattedStartDate}</div>
                 <div style="font-size: 0.85rem; color: var(--text-secondary);">${formattedStartTime} - ${formattedEndTime}</div>
               </div>
@@ -135,39 +169,41 @@ async function loadEventDetail(eventId) {
             <div style="display: flex; gap: 0.75rem; align-items: flex-start;">
               <i class="ri-map-pin-2-line" style="font-size: 1.5rem; color: var(--accent-cyan);"></i>
               <div>
-                <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Location / Venue</div>
+                <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Theater & Cinema Venue</div>
                 <div style="font-weight: 700; font-size: 0.95rem;">${ev.venue}</div>
               </div>
             </div>
           </div>
 
           <div style="margin-bottom: 2rem;">
-            <h3 style="font-size: 1.3rem; font-weight: 800; margin-bottom: 0.75rem;"><i class="ri-file-text-line" style="color: var(--primary);"></i> Event Overview</h3>
+            <h3 style="font-size: 1.3rem; font-weight: 800; margin-bottom: 0.75rem;"><i class="ri-film-line" style="color: var(--primary);"></i> Storyline & Synopsis</h3>
             <p style="font-size: 1.05rem; color: var(--text-secondary); line-height: 1.7; white-space: pre-line;">
               ${ev.description}
             </p>
+            ${directorsHtml}
+            ${castHtml}
           </div>
 
           <div style="border-top: 1px solid var(--border); padding-top: 1.5rem; display: flex; align-items: center; gap: 1rem;">
             <div style="width: 48px; height: 48px; background: var(--primary-light); color: var(--primary); border-radius: 50%; display:flex; align-items:center; justify-content:center; font-size: 1.3rem; font-weight: 800;">
-              <i class="ri-user-star-line"></i>
+              <i class="ri-movie-2-line"></i>
             </div>
             <div>
-              <div style="font-size: 0.8rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Hosted By</div>
-              <div style="font-weight: 700; font-size: 1rem;">${ev.organizer ? ev.organizer.name : 'Event Organizer'}</div>
-              <div style="font-size: 0.85rem; color: var(--text-secondary);">${ev.organizer ? ev.organizer.email : ''}</div>
+              <div style="font-size: 0.8rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Cinema Provider</div>
+              <div style="font-weight: 700; font-size: 1rem;">${ev.organizer ? ev.organizer.name : 'Sample MFlix Network'}</div>
+              <div style="font-size: 0.85rem; color: var(--text-secondary);">${ev.organizer ? ev.organizer.email : 'support@mflix.com'}</div>
             </div>
           </div>
         </div>
 
         <!-- Right Column Ticket Pass Booking Sidebar -->
         <div class="glass" style="padding: 2rem; border-radius: var(--radius-xl); position: sticky; top: 90px;">
-          <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Ticket Pricing</div>
+          <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Cinema Ticket Price</div>
           <div style="font-size: 2rem; font-weight: 800; color: var(--text-primary); margin-bottom: 1.25rem;">
-            ${minPrice === 0 ? 'Free' : 'Starting at $' + minPrice.toFixed(2)}
+            ${minPrice === 0 ? 'Free' : '$' + minPrice.toFixed(2)}
           </div>
 
-          <h4 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem;">Available Ticket Passes</h4>
+          <h4 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem;">Select Ticket Pass</h4>
 
           <div style="display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1.5rem;">
             ${ev.ticketTypes && ev.ticketTypes.length > 0 ? ev.ticketTypes.map(tier => {
@@ -179,13 +215,13 @@ async function loadEventDetail(eventId) {
                     <span style="font-weight: 700; font-size: 1rem;">${tier.name}</span>
                     <span style="font-weight: 800; font-size: 1.1rem; color: var(--primary);">$${tier.price.toFixed(2)}</span>
                   </div>
-                  <div style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 0.75rem;">${remaining} seats left of ${tier.capacity}</div>
+                  <div style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 0.75rem;">${remaining} seats available</div>
                   <button class="btn btn-primary btn-sm" style="width: 100%;" ${isSoldOut ? 'disabled' : ''} onclick="submitTicketBooking('${ev.id}', '${tier.id}')">
-                    ${isSoldOut ? 'Sold Out' : 'Book Pass Now'}
+                    ${isSoldOut ? 'Sold Out' : 'Book Ticket Pass'}
                   </button>
                 </div>
               `;
-            }).join('') : '<p style="color: var(--text-muted);">No ticket tiers published.</p>'}
+            }).join('') : '<p style="color: var(--text-muted);">No ticket passes published.</p>'}
           </div>
 
           <p style="font-size: 0.8rem; color: var(--text-muted); text-align: center;">
@@ -196,7 +232,7 @@ async function loadEventDetail(eventId) {
       </div>
     `;
   } catch (err) {
-    container.innerHTML = '<div style="text-align:center; padding: 3rem; color: #ef4444;"><p>Failed to load event details.</p></div>';
+    container.innerHTML = '<div style="text-align:center; padding: 3rem; color: #ef4444;"><p>Failed to load details.</p></div>';
   }
 }
 
@@ -330,11 +366,11 @@ function logout() {
   navigateTo('explore');
 }
 
-// Load & Render Events Catalog
+// Load & Render Events / Movies Catalog
 async function loadEvents() {
   const grid = document.getElementById('events-grid');
   if (!grid) return;
-  grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 3rem;"><i class="ri-loader-4-line ri-spin" style="font-size: 2rem; color: var(--primary);"></i><p style="margin-top: 0.5rem; color: var(--text-secondary);">Loading events catalog...</p></div>';
+  grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 3rem;"><i class="ri-loader-4-line ri-spin" style="font-size: 2rem; color: var(--primary);"></i><p style="margin-top: 0.5rem; color: var(--text-secondary);">Loading catalog...</p></div>';
 
   try {
     let url = `/events?page=1&limit=50`;
@@ -345,7 +381,7 @@ async function loadEvents() {
     state.events = res.data;
 
     if (!state.events || state.events.length === 0) {
-      grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 3rem; color: var(--text-muted);"><i class="ri-calendar-event-line" style="font-size: 3rem; margin-bottom: 0.5rem; display:block;"></i><p>No events found matching your criteria.</p></div>';
+      grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 3rem; color: var(--text-muted);"><i class="ri-film-line" style="font-size: 3rem; margin-bottom: 0.5rem; display:block;"></i><p>No listings found matching your criteria.</p></div>';
       return;
     }
 
@@ -353,17 +389,32 @@ async function loadEvents() {
       const minPrice = ev.ticketTypes && ev.ticketTypes.length > 0 
         ? Math.min(...ev.ticketTypes.map(t => t.price)) 
         : 0;
-      const formattedDate = new Date(ev.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+      const formattedDate = new Date(ev.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+      const posterImg = ev.poster ? `
+        <div style="height: 180px; overflow: hidden; border-radius: var(--radius-md) var(--radius-md) 0 0; margin: -1.5rem -1.5rem 1rem -1.5rem; background: #000; position: relative;">
+          <img src="${ev.poster}" alt="${ev.title}" style="width: 100%; height: 100%; object-fit: cover; opacity: 0.9;" onerror="this.parentElement.style.display='none'" />
+        </div>
+      ` : '';
+
+      const imdbBadge = ev.imdb && ev.imdb.rating ? `
+        <span style="background: #f59e0b; color: #fff; font-weight: 800; font-size: 0.78rem; padding: 0.15rem 0.5rem; border-radius: var(--radius-sm); margin-left: 0.5rem;">
+          ⭐ ${ev.imdb.rating}
+        </span>
+      ` : '';
 
       return `
         <div class="event-card" style="cursor: pointer;" onclick="showEventDetail('${ev.id}')">
+          ${posterImg}
           <div>
-            <span class="card-badge">${ev.category}</span>
+            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+              <span class="card-badge">${ev.category}</span>
+              ${imdbBadge}
+            </div>
             <h3 class="event-title" style="color: var(--primary); transition: color 0.2s;">${ev.title}</h3>
             <div class="event-meta">
               <div class="meta-item"><i class="ri-calendar-line" style="color: var(--primary);"></i> ${formattedDate}</div>
               <div class="meta-item"><i class="ri-map-pin-line" style="color: var(--accent-cyan);"></i> ${ev.venue}</div>
-              <div class="meta-item"><i class="ri-user-star-line" style="color: var(--accent-purple);"></i> By ${ev.organizer ? ev.organizer.name : 'Event Organizer'}</div>
             </div>
             <p style="font-size: 0.88rem; color: var(--text-secondary); line-clamp: 2; display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 1rem;">
               ${ev.description}
@@ -377,7 +428,7 @@ async function loadEvents() {
       `;
     }).join('');
   } catch (err) {
-    grid.innerHTML = '<p style="grid-column: 1/-1; text-align:center; color: #ef4444;">Failed to load events.</p>';
+    grid.innerHTML = '<p style="grid-column: 1/-1; text-align:center; color: #ef4444;">Failed to load catalog.</p>';
   }
 }
 
@@ -475,7 +526,7 @@ async function loadMyTickets() {
     state.myTickets = res.data;
 
     if (!state.myTickets || state.myTickets.length === 0) {
-      grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 3rem; color: var(--text-muted);"><i class="ri-ticket-2-line" style="font-size: 3rem; margin-bottom: 0.5rem; display:block;"></i><p>You have not registered for any events yet.</p></div>';
+      grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 3rem; color: var(--text-muted);"><i class="ri-ticket-2-line" style="font-size: 3rem; margin-bottom: 0.5rem; display:block;"></i><p>You have not registered for any events or movies yet.</p></div>';
       return;
     }
 
@@ -557,7 +608,7 @@ async function submitCheckIn() {
         <i class="ri-checkbox-circle-fill"></i> CHECK-IN VERIFIED!
       </div>
       <p><strong>Attendee:</strong> ${reg.user.name} (${reg.user.email})</p>
-      <p><strong>Event:</strong> ${reg.event.title}</p>
+      <p><strong>Event/Movie:</strong> ${reg.event.title}</p>
       <p><strong>Ticket Tier:</strong> ${reg.ticketType.name}</p>
       <p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.5rem;">Checked-in at: ${new Date(reg.checkedInAt).toLocaleTimeString()}</p>
     `;
@@ -599,7 +650,7 @@ async function handleCreateEventSubmit(e) {
   try {
     await apiCall('/events', 'POST', payload);
     closeModal('create-event-modal');
-    showToast('🚀 Event published successfully!');
+    showToast('🚀 Published successfully!');
     navigateTo('explore');
   } catch (e) {}
 }
