@@ -13,7 +13,7 @@ A production-grade, multi-tenant **Event Management REST API & Digital Ticketing
 
 #### Key Features:
 - **Authentication & RBAC**: JWT Bearer token authentication with 3 role tiers (\`ATTENDEE\`, \`ORGANIZER\`, \`ADMIN\`).
-- **Events Engine**: Full CRUD, multi-criteria full-text search (\`q\`), category filtering, date ranges, price filters, and standardized pagination metadata.
+- **Events Engine & Details View**: Full CRUD, multi-criteria full-text search (\`q\`), category filtering, date ranges, price filters, comprehensive single-event details page views, and standardized pagination metadata.
 - **Ticket Tiering & Capacities**: Dynamic multi-tier pricing (*General Pass*, *VIP*, *Early Bird*), atomic capacity tracking, and ticket code generation.
 - **Digital QR Tickets**: Base64 **QR Code Data URL** generation embedded into tickets for instant entrance verification.
 - **Venue Entrance Check-In**: High-throughput ticket validation (\`POST /api/v1/registrations/check-in\`) for event organizers.
@@ -264,10 +264,24 @@ A production-grade, multi-tenant **Event Management REST API & Digital Ticketing
       '/api/v1/events/{id}': {
         get: {
           tags: ['Events Catalog'],
-          summary: 'Get details of a specific event',
+          summary: 'Get details of a specific event (Event Details Page View)',
+          description: 'Retrieves comprehensive details for a single event including full description, schedule, venue location, organizer profile, and ticket pass pricing.',
           parameters: [{ in: 'path', name: 'id', required: true, schema: { type: 'string' } }],
           responses: {
-            '200': { description: 'Detailed event record with ticket tiers and organizer profile' },
+            '200': {
+              description: 'Detailed event record with ticket tiers and organizer profile',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      success: { type: 'boolean', example: true },
+                      data: { $ref: '#/components/schemas/Event' },
+                    },
+                  },
+                },
+              },
+            },
             '404': { description: 'Event not found' },
           },
         },
