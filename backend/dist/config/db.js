@@ -14,20 +14,17 @@ const isMongoDB = () => {
 };
 exports.isMongoDB = isMongoDB;
 const connectDB = async () => {
-    if (isConnected || mongoose_1.default.connection.readyState === 1) {
-        isConnected = true;
+    if (isConnected && mongoose_1.default.connection.readyState === 1) {
         return;
     }
     try {
-        let mongoUrl = process.env.DATABASE_URL || ATLAS_DEFAULT_URI;
-        if (!mongoUrl || mongoUrl.includes('127.0.0.1') || mongoUrl.includes('localhost')) {
-            mongoUrl = ATLAS_DEFAULT_URI;
+        let mongoUrl = ATLAS_DEFAULT_URI;
+        if (process.env.DATABASE_URL && process.env.DATABASE_URL.includes('cluster0.3gnbcqu.mongodb.net')) {
+            mongoUrl = process.env.DATABASE_URL;
         }
         await mongoose_1.default.connect(mongoUrl, {
-            serverSelectionTimeoutMS: 4000,
-            connectTimeoutMS: 4000,
-            socketTimeoutMS: 5000,
-            bufferCommands: false,
+            serverSelectionTimeoutMS: 8000,
+            connectTimeoutMS: 8000,
         });
         isConnected = true;
         console.log(`🍃 Connected to MongoDB Atlas database: ${mongoose_1.default.connection.db?.databaseName}`);
