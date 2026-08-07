@@ -20,6 +20,14 @@
       "dest": "api/auth.ts"
     },
     {
+      "src": "/api/v1/registrations/(.*)",
+      "dest": "api/registrations.ts"
+    },
+    {
+      "src": "/api/v1/registrations",
+      "dest": "api/registrations.ts"
+    },
+    {
       "src": "/api/v1/(.*)",
       "dest": "api/server.ts"
     },

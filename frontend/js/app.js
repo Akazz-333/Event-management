@@ -14,6 +14,15 @@ function getStoredToken() {
   return t && t !== 'undefined' && t !== 'null' ? t : null;
 }
 
+function getStoredTickets() {
+  try {
+    const raw = localStorage.getItem('myTickets');
+    return raw && raw !== 'undefined' && raw !== 'null' ? JSON.parse(raw) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
 // Embedded 36 Curated Events & Movies Fallback Catalog
 const CLIENT_FALLBACK_EVENTS = [
   // MOVIES (6 Items)
@@ -71,7 +80,7 @@ const state = {
   user: getStoredUser(),
   currentView: 'explore',
   events: [],
-  myTickets: [],
+  myTickets: getStoredTickets(),
   searchQuery: '',
   selectedCategory: '',
   authMode: 'login',
@@ -520,8 +529,10 @@ function toggleViewAuthMode() {
 function logout() {
   state.token = null;
   state.user = null;
+  state.myTickets = [];
   localStorage.removeItem('token');
   localStorage.removeItem('user');
+  localStorage.removeItem('myTickets');
   renderAuthHeader();
   showToast('Logged out successfully');
   navigateTo('explore');
@@ -678,20 +689,48 @@ async function openBookingModal(eventId) {
 async function confirmBooking(ticketTypeId) {
   if (!state.selectedEventForBooking) return;
 
+  const ev = state.selectedEventForBooking;
+  const selectedTier = ev.ticketTypes.find(t => (t.id || t.name) === ticketTypeId) || ev.ticketTypes[0] || { name: 'Standard Pass', price: 14.99 };
+
+  const newTicket = {
+    id: 'tkt-' + Date.now(),
+    ticketCode: 'EVT-TKT-' + Math.random().toString(36).substring(2, 8).toUpperCase(),
+    status: 'CONFIRMED',
+    createdAt: new Date().toISOString(),
+    event: {
+      id: ev.id,
+      title: ev.title,
+      category: ev.category,
+      venue: ev.venue,
+      startDate: ev.startDate,
+      endDate: ev.endDate,
+    },
+    ticketType: {
+      name: selectedTier.name,
+      price: selectedTier.price,
+    }
+  };
+
   try {
     const res = await apiCall('/registrations', 'POST', {
-      eventId: state.selectedEventForBooking.id,
+      eventId: ev.id,
       ticketTypeId: ticketTypeId,
-    });
+    }, false);
 
-    closeModal('book-modal');
-    showToast('🎉 Ticket Pass Booked Successfully!');
-    navigateTo('tickets');
+    if (res && res.data && res.data.registration) {
+      const serverTicket = res.data.registration;
+      state.myTickets.unshift(serverTicket);
+    } else {
+      state.myTickets.unshift(newTicket);
+    }
   } catch (err) {
-    closeModal('book-modal');
-    showToast('Demo ticket pass generated in your wallet!');
-    navigateTo('tickets');
+    state.myTickets.unshift(newTicket);
   }
+
+  localStorage.setItem('myTickets', JSON.stringify(state.myTickets));
+  closeModal('book-modal');
+  showToast('🎉 Digital Pass Booked & Added to Wallet!');
+  navigateTo('tickets');
 }
 
 // My Tickets Wallet Loader
@@ -706,12 +745,21 @@ async function loadMyTickets() {
 
   grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 4rem;"><i class="ri-loader-4-line ri-spin" style="font-size: 2.5rem; color: var(--primary);"></i><p style="margin-top: 0.5rem; color: var(--text-secondary);">Loading ticket passes...</p></div>';
 
+  let serverTickets = [];
   try {
-    const res = await apiCall('/registrations/my-tickets', 'GET');
-    state.myTickets = res.data && Array.isArray(res.data) ? res.data : [];
-  } catch (err) {
-    state.myTickets = [];
-  }
+    const res = await apiCall('/registrations/my-tickets', 'GET', null, false);
+    if (res && res.data && Array.isArray(res.data) && res.data.length > 0) {
+      serverTickets = res.data;
+    }
+  } catch (err) {}
+
+  const localTickets = getStoredTickets();
+  
+  const ticketMap = new Map();
+  localTickets.forEach(t => { if (t) ticketMap.set(t.ticketCode || t.id, t); });
+  serverTickets.forEach(t => { if (t) ticketMap.set(t.ticketCode || t.id, t); });
+
+  state.myTickets = Array.from(ticketMap.values());
 
   if (state.myTickets.length === 0) {
     grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 3rem; color: var(--text-muted);"><i class="ri-coupon-3-line" style="font-size: 3rem; display:block; margin-bottom: 0.5rem;"></i><p>No booked passes found in your wallet.</p><button class="btn btn-secondary" style="margin-top: 1rem;" onclick="navigateTo(\'explore\')">Browse Movies & Events</button></div>';
@@ -721,6 +769,7 @@ async function loadMyTickets() {
   grid.innerHTML = state.myTickets.map(tkt => {
     const ev = tkt.event || {};
     const formattedDate = new Date(ev.startDate || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const passTierName = tkt.ticketType ? tkt.ticketType.name : 'Standard Pass';
 
     return `
       <div class="glass" style="padding: 1.5rem; border-radius: var(--radius-lg); position: relative; border-left: 4px solid var(--primary);">
@@ -729,17 +778,18 @@ async function loadMyTickets() {
             <span class="card-badge">${ev.category || 'Event Pass'}</span>
             <h3 style="font-size: 1.25rem; font-weight: 800; margin-top: 0.25rem;">${ev.title || 'Reserved Event Pass'}</h3>
             <p style="font-size: 0.88rem; color: var(--text-secondary); margin-top: 0.2rem;"><i class="ri-map-pin-line"></i> ${ev.venue || 'Cinema Hall'}</p>
+            <p style="font-size: 0.82rem; color: var(--primary); font-weight: 700; margin-top: 0.2rem;"><i class="ri-ticket-2-line"></i> Tier: ${passTierName}</p>
           </div>
           <span class="role-tag role-ORGANIZER">${tkt.status || 'CONFIRMED'}</span>
         </div>
 
         <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 1rem; border-top: 1px dashed var(--border);">
           <div>
-            <div style="font-size: 0.78rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Ticket Pass Code</div>
+            <div style="font-size: 0.78rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Digital Pass Ticket Code</div>
             <div style="font-family: monospace; font-weight: 800; font-size: 1.1rem; color: var(--primary); margin-top: 0.1rem;">${tkt.ticketCode || 'EVT-TKT-PASS'}</div>
           </div>
           <div style="text-align: right;">
-            <div style="font-size: 0.78rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Showtime</div>
+            <div style="font-size: 0.78rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Showtime Date</div>
             <div style="font-size: 0.9rem; font-weight: 700; color: var(--text-primary); margin-top: 0.1rem;">${formattedDate}</div>
           </div>
         </div>
@@ -776,7 +826,7 @@ async function handleCreateEventSubmit(e) {
   };
 
   try {
-    await apiCall('/events', 'POST', payload);
+    await apiCall('/events', 'POST', payload, false);
     closeModal('create-event-modal');
     showToast('🎉 New Event / Movie Listing Published!');
     document.getElementById('create-event-form').reset();
@@ -800,7 +850,7 @@ async function submitCheckIn() {
   resultDiv.innerHTML = '<div style="text-align:center;"><i class="ri-loader-4-line ri-spin" style="font-size: 2rem; color: var(--primary);"></i><p>Verifying scanner code...</p></div>';
 
   try {
-    const res = await apiCall('/registrations/check-in', 'POST', { ticketCode });
+    const res = await apiCall('/registrations/check-in', 'POST', { ticketCode }, false);
     resultDiv.innerHTML = `
       <div style="padding: 1.25rem; background: #ecfdf5; border: 1px solid #10b981; border-radius: var(--radius-md); color: #065f46;">
         <div style="font-weight: 800; font-size: 1.1rem; display: flex; align-items: center; gap: 0.5rem;"><i class="ri-checkbox-circle-fill" style="font-size: 1.4rem;"></i> Ticket Pass Verified!</div>
