@@ -1,0 +1,2 @@
+export declare const registerValidator: import("express-validator").ValidationChain[];
+export declare const loginValidator: import("express-validator").ValidationChain[];

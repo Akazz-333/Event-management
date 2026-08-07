@@ -1,5 +1,5 @@
-const app = require('../src/app').default || require('../src/app');
-const { connectDB } = require('../src/config/db');
+const app = require('../dist/app').default || require('../dist/app');
+const { connectDB } = require('../dist/config/db');
 
 module.exports = async (req, res) => {
   await connectDB();
