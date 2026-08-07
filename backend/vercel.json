@@ -3,23 +3,23 @@
   "rewrites": [
     {
       "source": "/api/v1/(.*)",
-      "destination": "/backend/api/index.ts"
+      "destination": "/api/index.ts"
     },
     {
       "source": "/api-docs(.*)",
-      "destination": "/backend/api/index.ts"
+      "destination": "/api/index.ts"
     },
     {
       "source": "/css/(.*)",
-      "destination": "/backend/public/css/$1"
+      "destination": "/public/css/$1"
     },
     {
       "source": "/js/(.*)",
-      "destination": "/backend/public/js/$1"
+      "destination": "/public/js/$1"
     },
     {
       "source": "/(.*)",
-      "destination": "/backend/public/index.html"
+      "destination": "/public/index.html"
     }
   ]
 }
