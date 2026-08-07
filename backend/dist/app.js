@@ -13,34 +13,17 @@ const routes_1 = __importDefault(require("./routes"));
 const errorHandler_1 = require("./middleware/errorHandler");
 const appError_1 = require("./utils/appError");
 const app = (0, express_1.default)();
-// Trust proxy for Vercel reverse proxy environment
 app.set('trust proxy', 1);
-// Security Middlewares with custom CSP for inline attributes support
+// Security Middlewares
 app.use((0, helmet_1.default)({
-    contentSecurityPolicy: {
-        directives: {
-            defaultSrc: ["'self'"],
-            scriptSrc: ["'self'", "'unsafe-inline'"],
-            scriptSrcAttr: ["'unsafe-inline'"],
-            styleSrc: ["'self'", "'unsafe-inline'", "https:"],
-            fontSrc: ["'self'", "https:", "data:"],
-            imgSrc: ["'self'", "data:", "https:"],
-        },
-    },
+    contentSecurityPolicy: false, // Disabled CSP header conflict on Vercel
 }));
 app.use((0, cors_1.default)({ origin: '*', credentials: true }));
-// Rate Limiting (Disabled on Vercel serverless to prevent proxy IP crashes)
+// Rate Limiting (Disabled on Vercel)
 if (!process.env.VERCEL) {
     const limiter = (0, express_rate_limit_1.default)({
         windowMs: 15 * 60 * 1000,
         max: 300,
-        message: {
-            success: false,
-            error: {
-                message: 'Too many requests from this IP, please try again after 15 minutes.',
-                statusCode: 429,
-            },
-        },
     });
     app.use('/api/', limiter);
 }
@@ -49,7 +32,10 @@ app.use(express_1.default.json());
 app.use(express_1.default.urlencoded({ extended: true }));
 app.use(express_1.default.static('public'));
 // Interactive Swagger API Documentation
-app.use('/api-docs', swagger_ui_express_1.default.serve, swagger_ui_express_1.default.setup(swagger_1.swaggerSpec));
+try {
+    app.use('/api-docs', swagger_ui_express_1.default.serve, swagger_ui_express_1.default.setup(swagger_1.swaggerSpec));
+}
+catch (e) { }
 app.get('/api-docs.json', (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.send(swagger_1.swaggerSpec);

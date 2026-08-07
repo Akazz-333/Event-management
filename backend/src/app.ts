@@ -11,39 +11,22 @@ import { AppError } from './utils/appError';
 
 const app = express();
 
-// Trust proxy for Vercel reverse proxy environment
 app.set('trust proxy', 1);
 
-// Security Middlewares with custom CSP for inline attributes support
+// Security Middlewares
 app.use(
   helmet({
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'"],
-        scriptSrcAttr: ["'unsafe-inline'"],
-        styleSrc: ["'self'", "'unsafe-inline'", "https:"],
-        fontSrc: ["'self'", "https:", "data:"],
-        imgSrc: ["'self'", "data:", "https:"],
-      },
-    },
+    contentSecurityPolicy: false, // Disabled CSP header conflict on Vercel
   })
 );
 
 app.use(cors({ origin: '*', credentials: true }));
 
-// Rate Limiting (Disabled on Vercel serverless to prevent proxy IP crashes)
+// Rate Limiting (Disabled on Vercel)
 if (!process.env.VERCEL) {
   const limiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 300,
-    message: {
-      success: false,
-      error: {
-        message: 'Too many requests from this IP, please try again after 15 minutes.',
-        statusCode: 429,
-      },
-    },
   });
   app.use('/api/', limiter);
 }
@@ -54,7 +37,10 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
 // Interactive Swagger API Documentation
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+try {
+  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+} catch (e) {}
+
 app.get('/api-docs.json', (req: Request, res: Response) => {
   res.setHeader('Content-Type', 'application/json');
   res.send(swaggerSpec);
