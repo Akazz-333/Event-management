@@ -9,33 +9,25 @@ const mongoose_1 = __importDefault(require("mongoose"));
 dotenv_1.default.config();
 const ATLAS_DEFAULT_URI = 'mongodb+srv://akazz33333_db_user:sb25102004@cluster0.3gnbcqu.mongodb.net/event_management_db?retryWrites=true&w=majority&appName=Cluster0';
 const isMongoDB = () => {
-    const url = process.env.DATABASE_URL || '';
-    if (process.env.VERCEL)
-        return true;
-    return url.startsWith('mongodb://') || url.startsWith('mongodb+srv://');
+    return true;
 };
 exports.isMongoDB = isMongoDB;
 const connectDB = async () => {
-    if ((0, exports.isMongoDB)()) {
-        try {
-            let mongoUrl = process.env.DATABASE_URL || 'mongodb://127.0.0.1:27017/event_management_db';
-            if (process.env.VERCEL && (mongoUrl.includes('127.0.0.1') || mongoUrl.includes('localhost') || !mongoUrl)) {
-                mongoUrl = ATLAS_DEFAULT_URI;
-            }
-            if (mongoose_1.default.connection.readyState === 1 || mongoose_1.default.connection.readyState === 2) {
-                return;
-            }
-            await mongoose_1.default.connect(mongoUrl, {
-                serverSelectionTimeoutMS: 3000,
-            });
-            console.log(`🍃 Connected to MongoDB database via Mongoose`);
+    try {
+        let mongoUrl = process.env.DATABASE_URL || ATLAS_DEFAULT_URI;
+        if (!mongoUrl || mongoUrl.includes('127.0.0.1') || mongoUrl.includes('localhost')) {
+            mongoUrl = ATLAS_DEFAULT_URI;
         }
-        catch (error) {
-            console.warn('⚠️ Database connection warning on serverless invocation:', error);
+        if (mongoose_1.default.connection.readyState === 1 || mongoose_1.default.connection.readyState === 2) {
+            return;
         }
+        await mongoose_1.default.connect(mongoUrl, {
+            serverSelectionTimeoutMS: 5000,
+        });
+        console.log(`🍃 Connected to MongoDB Atlas database: ${mongoose_1.default.connection.db?.databaseName}`);
     }
-    else {
-        console.log('📁 Using SQLite / Prisma database engine');
+    catch (error) {
+        console.warn('⚠️ Database connection warning on serverless invocation:', error);
     }
 };
 exports.connectDB = connectDB;
