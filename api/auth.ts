@@ -17,12 +17,13 @@ export default async function handler(req: any, res: any) {
   const url = (req.url || '').toString();
 
   try {
-    if (url.includes('/register') || req.body?.name) {
-      const { name, email, password, role } = req.body || {};
-      const result = await AuthService.register({ name, email, password, role });
+    const { name, email, password, role } = req.body || {};
+    
+    if (url.includes('/register') || name) {
+      const userName = name || (email ? email.split('@')[0] : 'User');
+      const result = await AuthService.register({ name: userName, email, password, role });
       return res.status(201).json({ success: true, data: result });
     } else {
-      const { email, password } = req.body || {};
       const result = await AuthService.login({ email, password });
       return res.status(200).json({ success: true, data: result });
     }
