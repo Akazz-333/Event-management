@@ -21,11 +21,11 @@ export declare class AuthService {
     }> & {
         __v: number;
     }) | {
+        id: string;
         name: string;
         email: string;
-        createdAt: Date;
-        id: string;
         role: string;
+        createdAt: Date;
         updatedAt: Date;
     }>;
     static getAllUsers(): Promise<(import("../models/User").IUser & Required<{
@@ -33,10 +33,10 @@ export declare class AuthService {
     }> & {
         __v: number;
     })[] | {
+        id: string;
         name: string;
         email: string;
-        createdAt: Date;
-        id: string;
         role: string;
+        createdAt: Date;
     }[]>;
 }

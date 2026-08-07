@@ -38,30 +38,30 @@ export interface EventQueryParams {
 export declare class EventService {
     static createEvent(organizerId: string, input: CreateEventInput): Promise<({
         ticketTypes: {
+            id: string;
             name: string;
             createdAt: Date;
-            id: string;
+            updatedAt: Date;
+            eventId: string;
             price: number;
             capacity: number;
-            eventId: string;
-            updatedAt: Date;
             soldCount: number;
         }[];
         organizer: {
+            id: string;
             name: string;
             email: string;
-            id: string;
         };
     } & {
-        category: string;
-        startDate: Date;
-        createdAt: Date;
-        title: string;
-        description: string;
-        venue: string;
-        endDate: Date;
         id: string;
+        description: string;
+        createdAt: Date;
         updatedAt: Date;
+        title: string;
+        category: string;
+        venue: string;
+        startDate: Date;
+        endDate: Date;
         status: string;
         organizerId: string;
     }) | {
@@ -114,13 +114,13 @@ export declare class EventService {
         price: number;
         capacity: number;
     }): Promise<{
+        id: string;
         name: string;
         createdAt: Date;
-        id: string;
+        updatedAt: Date;
+        eventId: string;
         price: number;
         capacity: number;
-        eventId: string;
-        updatedAt: Date;
         soldCount: number;
     } | (import("../models/TicketType").ITicketType & Required<{
         _id: import("mongoose").Types.ObjectId;
@@ -128,13 +128,13 @@ export declare class EventService {
         __v: number;
     })>;
     static getTicketTypesByEvent(eventId: string): Promise<{
+        id: string;
         name: string;
         createdAt: Date;
-        id: string;
+        updatedAt: Date;
+        eventId: string;
         price: number;
         capacity: number;
-        eventId: string;
-        updatedAt: Date;
         soldCount: number;
     }[] | (import("../models/TicketType").ITicketType & Required<{
         _id: import("mongoose").Types.ObjectId;

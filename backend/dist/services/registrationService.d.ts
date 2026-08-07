@@ -9,15 +9,15 @@ export declare class RegistrationService {
     }> & {
         __v: number;
     }) | {
-        createdAt: Date;
         id: string;
-        eventId: string;
-        ticketTypeId: string;
-        ticketCode: string;
+        createdAt: Date;
         updatedAt: Date;
         status: string;
+        eventId: string;
+        ticketCode: string;
         checkedInAt: Date | null;
         userId: string;
+        ticketTypeId: string;
     }>;
     static checkInAttendee(ticketCode: string, userId: string, userRole: Role): Promise<any>;
 }

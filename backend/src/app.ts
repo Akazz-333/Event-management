@@ -1,10 +1,7 @@
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import rateLimit from 'express-rate-limit';
-import swaggerUi from 'swagger-ui-express';
 import { config } from './config';
-import { swaggerSpec } from './config/swagger';
 import apiRouter from './routes';
 import { globalErrorHandler } from './middleware/errorHandler';
 import { AppError } from './utils/appError';
@@ -16,34 +13,28 @@ app.set('trust proxy', 1);
 // Security Middlewares
 app.use(
   helmet({
-    contentSecurityPolicy: false, // Disabled CSP header conflict on Vercel
+    contentSecurityPolicy: false,
   })
 );
 
 app.use(cors({ origin: '*', credentials: true }));
-
-// Rate Limiting (Disabled on Vercel)
-if (!process.env.VERCEL) {
-  const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 300,
-  });
-  app.use('/api/', limiter);
-}
 
 // Body Parsing & Static Files
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
-// Interactive Swagger API Documentation
-try {
-  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-} catch (e) {}
-
-app.get('/api-docs.json', (req: Request, res: Response) => {
-  res.setHeader('Content-Type', 'application/json');
-  res.send(swaggerSpec);
+// Dynamic Lazy Load Swagger Docs to prevent serverless bundling failure
+app.get('/api-docs*', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const swaggerUi = require('swagger-ui-express');
+    const { swaggerSpec } = require('./config/swagger');
+    return swaggerUi.serve[0](req, res, () => {
+      swaggerUi.setup(swaggerSpec)(req, res, next);
+    });
+  } catch (e) {
+    res.status(200).json({ message: 'Swagger API Docs available in local environment' });
+  }
 });
 
 // Health check endpoint
