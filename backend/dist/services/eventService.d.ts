@@ -37,6 +37,11 @@ export interface EventQueryParams {
 }
 export declare class EventService {
     static createEvent(organizerId: string, input: CreateEventInput): Promise<({
+        organizer: {
+            id: string;
+            name: string;
+            email: string;
+        };
         ticketTypes: {
             id: string;
             name: string;
@@ -47,11 +52,6 @@ export declare class EventService {
             capacity: number;
             soldCount: number;
         }[];
-        organizer: {
-            id: string;
-            name: string;
-            email: string;
-        };
     } & {
         id: string;
         description: string;
