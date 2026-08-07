@@ -1,0 +1,35 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "backend/src/server.ts",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "backend/public/**/*",
+      "use": "@vercel/static"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/v1/(.*)",
+      "dest": "backend/src/server.ts"
+    },
+    {
+      "src": "/api-docs(.*)",
+      "dest": "backend/src/server.ts"
+    },
+    {
+      "src": "/css/(.*)",
+      "dest": "backend/public/css/$1"
+    },
+    {
+      "src": "/js/(.*)",
+      "dest": "backend/public/js/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "backend/public/index.html"
+    }
+  ]
+}
