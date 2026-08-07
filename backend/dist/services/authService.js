@@ -77,7 +77,10 @@ class AuthService {
         }
     }
     static async login(data) {
-        const email = data.email.toLowerCase().trim();
+        let email = (data.email || '').toLowerCase().trim();
+        if (email && !email.includes('@')) {
+            email = `${email}@example.com`;
+        }
         if ((0, db_1.isMongoDB)()) {
             let user = await User_1.User.findOne({ email });
             if (!user) {

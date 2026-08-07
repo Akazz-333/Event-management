@@ -87,7 +87,10 @@ export class AuthService {
   }
 
   static async login(data: { email: string; password: string }) {
-    const email = data.email.toLowerCase().trim();
+    let email = (data.email || '').toLowerCase().trim();
+    if (email && !email.includes('@')) {
+      email = `${email}@example.com`;
+    }
 
     if (isMongoDB()) {
       let user = await MongoUser.findOne({ email });
