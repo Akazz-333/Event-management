@@ -2,11 +2,11 @@
   "rewrites": [
     {
       "source": "/api/v1/(.*)",
-      "destination": "/api"
+      "destination": "/api/server"
     },
     {
       "source": "/api-docs(.*)",
-      "destination": "/api"
+      "destination": "/api/server"
     },
     {
       "source": "/css/(.*)",
