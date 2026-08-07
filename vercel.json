@@ -1,12 +1,16 @@
 {
   "rewrites": [
     {
+      "source": "/api/v1/events",
+      "destination": "/api/events.ts"
+    },
+    {
       "source": "/api/v1/(.*)",
-      "destination": "/api"
+      "destination": "/api/server.ts"
     },
     {
       "source": "/api-docs(.*)",
-      "destination": "/api"
+      "destination": "/api/server.ts"
     },
     {
       "source": "/css/(.*)",
