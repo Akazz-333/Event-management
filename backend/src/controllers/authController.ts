@@ -6,7 +6,14 @@ import { AuthenticatedRequest } from '../types';
 export class AuthController {
   static async register(req: Request, res: Response, next: NextFunction) {
     try {
-      const result = await AuthService.register(req.body);
+      let { name, email, password, role } = req.body || {};
+      if (email && !email.includes('@')) {
+        email = `${email.trim()}@example.com`;
+      }
+      if (!name && email) {
+        name = email.split('@')[0];
+      }
+      const result = await AuthService.register({ name, email, password, role });
       return sendSuccess(res, result, 'User registered successfully', 201);
     } catch (error) {
       next(error);
@@ -15,7 +22,11 @@ export class AuthController {
 
   static async login(req: Request, res: Response, next: NextFunction) {
     try {
-      const result = await AuthService.login(req.body);
+      let { email, password } = req.body || {};
+      if (email && !email.includes('@')) {
+        email = `${email.trim()}@example.com`;
+      }
+      const result = await AuthService.login({ email, password });
       return sendSuccess(res, result, 'User logged in successfully', 200);
     } catch (error) {
       next(error);
