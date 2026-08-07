@@ -1,3 +1,4 @@
+const { connectDB } = require('../backend/dist/config/db');
 let app;
 
 try {
@@ -10,6 +11,9 @@ try {
   }
 }
 
-module.exports = (req, res) => {
+module.exports = async (req, res) => {
+  try {
+    await connectDB();
+  } catch (e) {}
   return app(req, res);
 };
