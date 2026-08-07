@@ -96,7 +96,7 @@ async function loadEventDetail(eventId) {
 
   try {
     const res = await apiCall(`/events/${eventId}`, 'GET', null, false);
-    const ev = res.data;
+    const ev = res.data && res.data.event ? res.data.event : res.data;
 
     const startDateObj = new Date(ev.startDate);
     const endDateObj = new Date(ev.endDate);
@@ -378,7 +378,7 @@ async function loadEvents() {
     if (state.selectedCategory) url += `&category=${encodeURIComponent(state.selectedCategory)}`;
 
     const res = await apiCall(url, 'GET', null, false);
-    state.events = res.data;
+    state.events = Array.isArray(res.data) ? res.data : (res.data && res.data.events ? res.data.events : []);
 
     if (!state.events || state.events.length === 0) {
       grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 3rem; color: var(--text-muted);"><i class="ri-film-line" style="font-size: 3rem; margin-bottom: 0.5rem; display:block;"></i><p>No listings found matching your criteria.</p></div>';
