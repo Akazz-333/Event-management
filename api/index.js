@@ -1,6 +1,20 @@
-const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
+let mongoose, bcrypt, jwt;
+
+try {
+  mongoose = require('mongoose');
+  bcrypt = require('bcryptjs');
+  jwt = require('jsonwebtoken');
+} catch (e) {
+  try {
+    mongoose = require('../backend/node_modules/mongoose');
+    bcrypt = require('../backend/node_modules/bcryptjs');
+    jwt = require('../backend/node_modules/jsonwebtoken');
+  } catch (e2) {
+    mongoose = require('./backend/node_modules/mongoose');
+    bcrypt = require('./backend/node_modules/bcryptjs');
+    jwt = require('./backend/node_modules/jsonwebtoken');
+  }
+}
 
 const ATLAS_URI = 'mongodb+srv://akazz33333_db_user:sb25102004@cluster0.3gnbcqu.mongodb.net/event_management_db?retryWrites=true&w=majority&appName=Cluster0';
 const JWT_SECRET = 'eventhub_super_secret_jwt_key_2026_safe_and_secure';
