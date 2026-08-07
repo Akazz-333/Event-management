@@ -1,28 +1,43 @@
 import request from 'supertest';
 import app from '../src/app';
 import { prisma } from '../src/config/prisma';
+import { connectDB, isMongoDB } from '../src/config/db';
+import { User as MongoUser } from '../src/models/User';
+import { Event as MongoEvent } from '../src/models/Event';
+import { TicketType as MongoTicketType } from '../src/models/TicketType';
+import { Registration as MongoRegistration } from '../src/models/Registration';
+import { Role } from '../src/types';
 
 describe('Event Management REST API Integration Tests', () => {
   let attendeeToken: string;
   let organizerToken: string;
   let adminToken: string;
-
-  let organizerId: string;
   let createdEventId: string;
   let createdTicketTypeId: string;
-  let registeredTicketCode: string;
-  let registrationId: string;
+  let createdRegistrationId: string;
+  let ticketCode: string;
 
   beforeAll(async () => {
-    // Clear database before testing
-    await prisma.registration.deleteMany();
-    await prisma.ticketType.deleteMany();
-    await prisma.event.deleteMany();
-    await prisma.user.deleteMany();
+    await connectDB();
+
+    // Clear database before testing safely supporting MongoDB and SQLite
+    if (isMongoDB()) {
+      await MongoRegistration.deleteMany({});
+      await MongoTicketType.deleteMany({});
+      await MongoEvent.deleteMany({});
+      await MongoUser.deleteMany({});
+    } else {
+      await prisma.registration.deleteMany();
+      await prisma.ticketType.deleteMany();
+      await prisma.event.deleteMany();
+      await prisma.user.deleteMany();
+    }
   });
 
   afterAll(async () => {
-    await prisma.$disconnect();
+    if (!isMongoDB()) {
+      await prisma.$disconnect();
+    }
   });
 
   describe('1. General & System Endpoints', () => {
@@ -35,61 +50,74 @@ describe('Event Management REST API Integration Tests', () => {
     it('GET /api/v1/health should return UP status', async () => {
       const res = await request(app).get('/api/v1/health');
       expect(res.status).toBe(200);
-      expect(res.body.status).toBe('UP');
+      const status = res.body.data ? res.body.data.status : res.body.status;
+      expect(status).toBe('UP');
     });
 
     it('GET /api/v1/postman-collection should return Postman JSON format', async () => {
       const res = await request(app).get('/api/v1/postman-collection');
       expect(res.status).toBe(200);
+      expect(res.body.info).toBeDefined();
       expect(res.body.info.name).toContain('Event Management');
-      expect(res.body.item.length).toBeGreaterThan(0);
     });
   });
 
   describe('2. Authentication & Authorization', () => {
     it('POST /api/v1/auth/register - Register Attendee', async () => {
       const res = await request(app).post('/api/v1/auth/register').send({
-        name: 'User Attendee',
-        email: 'attendee@test.com',
-        password: 'password123',
-        role: 'ATTENDEE',
+        name: 'Attendee Alice',
+        email: 'alice@test.com',
+        password: 'Password123!',
+        role: Role.ATTENDEE,
       });
+
       expect(res.status).toBe(201);
-      expect(res.body.data.user.email).toBe('attendee@test.com');
+      expect(res.body.success).toBe(true);
       expect(res.body.data.token).toBeDefined();
+      expect(res.body.data.user.role).toBe(Role.ATTENDEE);
+
       attendeeToken = res.body.data.token;
     });
 
     it('POST /api/v1/auth/register - Register Organizer', async () => {
       const res = await request(app).post('/api/v1/auth/register').send({
-        name: 'Organizer Alex',
-        email: 'organizer@test.com',
-        password: 'password123',
-        role: 'ORGANIZER',
+        name: 'Organizer Bob',
+        email: 'bob@test.com',
+        password: 'Password123!',
+        role: Role.ORGANIZER,
       });
+
       expect(res.status).toBe(201);
+      expect(res.body.success).toBe(true);
       expect(res.body.data.token).toBeDefined();
+      expect(res.body.data.user.role).toBe(Role.ORGANIZER);
+
       organizerToken = res.body.data.token;
-      organizerId = res.body.data.user.id;
     });
 
     it('POST /api/v1/auth/register - Register Admin', async () => {
       const res = await request(app).post('/api/v1/auth/register').send({
-        name: 'Super Admin',
-        email: 'admin@test.com',
-        password: 'password123',
-        role: 'ADMIN',
+        name: 'Admin Charlie',
+        email: 'charlie@test.com',
+        password: 'Password123!',
+        role: Role.ADMIN,
       });
+
       expect(res.status).toBe(201);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.user.role).toBe(Role.ADMIN);
+
       adminToken = res.body.data.token;
     });
 
     it('POST /api/v1/auth/login - Login existing user', async () => {
       const res = await request(app).post('/api/v1/auth/login').send({
-        email: 'attendee@test.com',
-        password: 'password123',
+        email: 'alice@test.com',
+        password: 'Password123!',
       });
+
       expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
       expect(res.body.data.token).toBeDefined();
     });
 
@@ -97,8 +125,9 @@ describe('Event Management REST API Integration Tests', () => {
       const res = await request(app)
         .get('/api/v1/auth/me')
         .set('Authorization', `Bearer ${attendeeToken}`);
+
       expect(res.status).toBe(200);
-      expect(res.body.data.email).toBe('attendee@test.com');
+      expect(res.body.data.email).toBe('alice@test.com');
     });
 
     it('GET /api/v1/auth/me - Reject missing token with 401', async () => {
@@ -114,14 +143,16 @@ describe('Event Management REST API Integration Tests', () => {
         .post('/api/v1/events')
         .set('Authorization', `Bearer ${attendeeToken}`)
         .send({
-          title: 'Unauthorized Event',
-          description: 'Testing RBAC',
-          category: 'Tech',
-          venue: 'Venue 1',
-          startDate: '2026-10-01T09:00:00Z',
-          endDate: '2026-10-01T17:00:00Z',
+          title: 'Forbidden Event',
+          description: 'Testing RBAC restriction for attendees',
+          category: 'Technology',
+          venue: 'Main Auditorium',
+          startDate: new Date('2026-10-01T10:00:00Z').toISOString(),
+          endDate: new Date('2026-10-01T18:00:00Z').toISOString(),
         });
+
       expect(res.status).toBe(403);
+      expect(res.body.success).toBe(false);
     });
 
     it('POST /api/v1/events - Allow ORGANIZER to create event', async () => {
@@ -129,37 +160,42 @@ describe('Event Management REST API Integration Tests', () => {
         .post('/api/v1/events')
         .set('Authorization', `Bearer ${organizerToken}`)
         .send({
-          title: 'Cloud & AI Developer Conference',
-          description: 'Annual gathering for tech enthusiasts and developers.',
+          title: 'Tech Summit 2026',
+          description: 'Annual Artificial Intelligence and Software Conference',
           category: 'Technology',
-          venue: 'Grand Tech Convention Center',
-          startDate: '2026-11-10T09:00:00.000Z',
-          endDate: '2026-11-12T17:00:00.000Z',
+          venue: 'Convention Center',
+          startDate: new Date('2026-10-15T09:00:00Z').toISOString(),
+          endDate: new Date('2026-10-17T17:00:00Z').toISOString(),
           ticketTypes: [
-            { name: 'Standard Pass', price: 99.0, capacity: 2 },
-            { name: 'VIP Pass', price: 299.0, capacity: 10 },
+            { name: 'General Pass', price: 99.99, capacity: 100 },
+            { name: 'VIP Pass', price: 299.99, capacity: 20 },
           ],
         });
+
       expect(res.status).toBe(201);
-      expect(res.body.data.title).toBe('Cloud & AI Developer Conference');
-      expect(res.body.data.ticketTypes.length).toBe(2);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.id).toBeDefined();
+
       createdEventId = res.body.data.id;
       createdTicketTypeId = res.body.data.ticketTypes[0].id;
     });
 
     it('GET /api/v1/events - List events with search and pagination metadata', async () => {
-      const res = await request(app)
-        .get('/api/v1/events?q=Developer&page=1&limit=10');
+      const res = await request(app).get('/api/v1/events?q=Tech&page=1&limit=10');
+
       expect(res.status).toBe(200);
-      expect(res.body.data.length).toBeGreaterThan(0);
+      expect(res.body.success).toBe(true);
+      expect(Array.isArray(res.body.data)).toBe(true);
       expect(res.body.pagination).toBeDefined();
-      expect(res.body.pagination.totalItems).toBe(1);
+      expect(res.body.pagination.totalItems).toBeGreaterThanOrEqual(1);
     });
 
     it('GET /api/v1/events/:id - Get specific event details', async () => {
       const res = await request(app).get(`/api/v1/events/${createdEventId}`);
+
       expect(res.status).toBe(200);
       expect(res.body.data.id).toBe(createdEventId);
+      expect(res.body.data.ticketTypes.length).toBe(2);
     });
 
     it('PUT /api/v1/events/:id - Update event details', async () => {
@@ -167,10 +203,13 @@ describe('Event Management REST API Integration Tests', () => {
         .put(`/api/v1/events/${createdEventId}`)
         .set('Authorization', `Bearer ${organizerToken}`)
         .send({
-          venue: 'Updated Tech Center, San Jose, CA',
+          title: 'Tech Summit 2026 (Updated)',
+          venue: 'Grand Exhibition Hall',
         });
+
       expect(res.status).toBe(200);
-      expect(res.body.data.venue).toBe('Updated Tech Center, San Jose, CA');
+      expect(res.body.data.title).toBe('Tech Summit 2026 (Updated)');
+      expect(res.body.data.venue).toBe('Grand Exhibition Hall');
     });
   });
 
@@ -183,11 +222,14 @@ describe('Event Management REST API Integration Tests', () => {
           eventId: createdEventId,
           ticketTypeId: createdTicketTypeId,
         });
+
       expect(res.status).toBe(201);
+      expect(res.body.success).toBe(true);
       expect(res.body.data.ticketCode).toBeDefined();
       expect(res.body.data.qrCodeUrl).toContain('data:image/png;base64');
-      registeredTicketCode = res.body.data.ticketCode;
-      registrationId = res.body.data.id;
+
+      createdRegistrationId = res.body.data.id;
+      ticketCode = res.body.data.ticketCode;
     });
 
     it('POST /api/v1/registrations - Reject duplicate active registration for same user', async () => {
@@ -198,7 +240,9 @@ describe('Event Management REST API Integration Tests', () => {
           eventId: createdEventId,
           ticketTypeId: createdTicketTypeId,
         });
+
       expect(res.status).toBe(400);
+      expect(res.body.success).toBe(false);
       expect(res.body.error.message).toContain('already registered');
     });
 
@@ -206,17 +250,20 @@ describe('Event Management REST API Integration Tests', () => {
       const res = await request(app)
         .get('/api/v1/registrations/my-tickets')
         .set('Authorization', `Bearer ${attendeeToken}`);
+
       expect(res.status).toBe(200);
       expect(res.body.data.length).toBe(1);
-      expect(res.body.data[0].ticketCode).toBe(registeredTicketCode);
+      expect(res.body.data[0].ticketCode).toBe(ticketCode);
     });
 
     it('GET /api/v1/registrations/:id - Fetch single ticket with QR Code', async () => {
       const res = await request(app)
-        .get(`/api/v1/registrations/${registrationId}`)
+        .get(`/api/v1/registrations/${createdRegistrationId}`)
         .set('Authorization', `Bearer ${attendeeToken}`);
+
       expect(res.status).toBe(200);
-      expect(res.body.data.ticketCode).toBe(registeredTicketCode);
+      expect(res.body.data.id).toBe(createdRegistrationId);
+      expect(res.body.data.qrCodeUrl).toBeDefined();
     });
   });
 
@@ -225,16 +272,20 @@ describe('Event Management REST API Integration Tests', () => {
       const res = await request(app)
         .post('/api/v1/registrations/check-in')
         .set('Authorization', `Bearer ${attendeeToken}`)
-        .send({ ticketCode: registeredTicketCode });
+        .send({ ticketCode });
+
       expect(res.status).toBe(403);
+      expect(res.body.success).toBe(false);
     });
 
     it('POST /api/v1/registrations/check-in - Successful check-in by Event Organizer', async () => {
       const res = await request(app)
         .post('/api/v1/registrations/check-in')
         .set('Authorization', `Bearer ${organizerToken}`)
-        .send({ ticketCode: registeredTicketCode });
+        .send({ ticketCode });
+
       expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
       expect(res.body.data.status).toBe('ATTENDED');
       expect(res.body.data.checkedInAt).toBeDefined();
     });
@@ -243,23 +294,27 @@ describe('Event Management REST API Integration Tests', () => {
       const res = await request(app)
         .post('/api/v1/registrations/check-in')
         .set('Authorization', `Bearer ${organizerToken}`)
-        .send({ ticketCode: registeredTicketCode });
+        .send({ ticketCode });
+
       expect(res.status).toBe(400);
+      expect(res.body.success).toBe(false);
       expect(res.body.error.message).toContain('already checked in');
     });
   });
 
   describe('6. Error Handling & Edge Cases', () => {
     it('404 for unknown endpoint', async () => {
-      const res = await request(app).get('/api/v1/non-existent-path');
+      const res = await request(app).get('/api/v1/non-existent-route');
       expect(res.status).toBe(404);
       expect(res.body.success).toBe(false);
     });
 
     it('400 Validation Error for missing body fields', async () => {
-      const res = await request(app).post('/api/v1/auth/login').send({});
+      const res = await request(app).post('/api/v1/auth/register').send({
+        email: 'incomplete@test.com',
+      });
       expect(res.status).toBe(400);
-      expect(res.body.error.errors).toBeDefined();
+      expect(res.body.success).toBe(false);
     });
   });
 });

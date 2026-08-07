@@ -1,8 +1,8 @@
 import { body, param } from 'express-validator';
 
 export const createRegistrationValidator = [
-  body('eventId').isUUID().withMessage('Valid eventId is required'),
-  body('ticketTypeId').isUUID().withMessage('Valid ticketTypeId is required'),
+  body('eventId').notEmpty().withMessage('Valid eventId is required'),
+  body('ticketTypeId').notEmpty().withMessage('Valid ticketTypeId is required'),
 ];
 
 export const checkInValidator = [
@@ -13,5 +13,5 @@ export const checkInValidator = [
 ];
 
 export const registrationIdParamValidator = [
-  param('id').isUUID().withMessage('Invalid Registration ID format'),
+  param('id').notEmpty().withMessage('Invalid Registration ID format'),
 ];

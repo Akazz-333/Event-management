@@ -57,7 +57,7 @@ export const createEventValidator = [
 ];
 
 export const updateEventValidator = [
-  param('id').isUUID().withMessage('Invalid Event ID format'),
+  param('id').notEmpty().withMessage('Invalid Event ID format'),
   body('title').optional().trim().isLength({ min: 3, max: 150 }),
   body('description').optional().trim(),
   body('category').optional().trim(),
@@ -84,7 +84,7 @@ export const getEventsQueryValidator = [
 ];
 
 export const createTicketTypeValidator = [
-  param('eventId').isUUID().withMessage('Invalid Event ID format'),
+  param('eventId').notEmpty().withMessage('Invalid Event ID format'),
   body('name').trim().notEmpty().withMessage('Ticket type name is required'),
   body('price').isFloat({ min: 0 }).withMessage('Price must be a non-negative number'),
   body('capacity').isInt({ min: 1 }).withMessage('Capacity must be at least 1'),

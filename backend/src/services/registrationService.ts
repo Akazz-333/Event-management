@@ -27,7 +27,7 @@ export class RegistrationService {
       }
 
       const ticketType = await MongoTicketType.findById(ticketTypeId);
-      if (!ticketType || ticketType.eventId.toString() !== eventId) {
+      if (!ticketType || (ticketType.eventId as any).toString() !== eventId) {
         throw new AppError('Invalid ticket type specified for this event', 404);
       }
 
@@ -61,7 +61,7 @@ export class RegistrationService {
       const regObj = newReg.toJSON() as any;
 
       const qrCodeUrl = await generateQRCodeDataUrl({
-        registrationId: regObj.id,
+        registrationId: regObj.id || regObj._id?.toString(),
         ticketCode: regObj.ticketCode,
         eventId: regObj.eventId,
         eventTitle: event.title,
@@ -71,8 +71,8 @@ export class RegistrationService {
 
       return {
         ...regObj,
-        event: { id: event.id, title: event.title, venue: event.venue, startDate: event.startDate, endDate: event.endDate },
-        ticketType: { id: ticketType.id, name: ticketType.name, price: ticketType.price },
+        event: { id: event.id || (event as any)._id?.toString(), title: event.title, venue: event.venue, startDate: event.startDate, endDate: event.endDate },
+        ticketType: { id: ticketType.id || (ticketType as any)._id?.toString(), name: ticketType.name, price: ticketType.price },
         user: user ? user.toJSON() : null,
         qrCodeUrl,
       };
@@ -159,16 +159,19 @@ export class RegistrationService {
           delete regObj.eventId;
           delete regObj.ticketTypeId;
 
+          const eventIdStr = event ? (event.id || event._id)?.toString() : '';
+          const ticketTypeIdStr = ticketType ? (ticketType.id || ticketType._id)?.toString() : '';
+
           const qrCodeUrl = await generateQRCodeDataUrl({
-            registrationId: regObj.id,
+            registrationId: regObj.id || regObj._id?.toString(),
             ticketCode: regObj.ticketCode,
-            eventId: event ? event._id.toString() : '',
+            eventId: eventIdStr,
           });
 
           return {
             ...regObj,
-            event: event ? { id: event._id.toString(), title: event.title, venue: event.venue, startDate: event.startDate, endDate: event.endDate, category: event.category } : null,
-            ticketType: ticketType ? { id: ticketType._id.toString(), name: ticketType.name, price: ticketType.price } : null,
+            event: event ? { id: eventIdStr, title: event.title, venue: event.venue, startDate: event.startDate, endDate: event.endDate, category: event.category } : null,
+            ticketType: ticketType ? { id: ticketTypeIdStr, name: ticketType.name, price: ticketType.price } : null,
             qrCodeUrl,
           };
         })
@@ -216,18 +219,22 @@ export class RegistrationService {
       const user = regObj.userId;
       const ticketType = regObj.ticketTypeId;
 
-      const isOwner = regObj.userId === userId || (user && user._id.toString() === userId);
-      const isOrganizer = event && event.organizerId && event.organizerId.toString() === userId;
+      const userIdStr = (user ? (user.id || user._id) : regObj.userId)?.toString();
+      const isOwner = userIdStr === userId;
+      const isOrganizer = event && event.organizerId && (event.organizerId.id || event.organizerId._id || event.organizerId).toString() === userId;
       const isAdmin = userRole === Role.ADMIN;
 
       if (!isOwner && !isOrganizer && !isAdmin) {
         throw new AppError('Access denied to this ticket', 403);
       }
 
+      const eventIdStr = event ? (event.id || event._id)?.toString() : '';
+      const ticketTypeIdStr = ticketType ? (ticketType.id || ticketType._id)?.toString() : '';
+
       const qrCodeUrl = await generateQRCodeDataUrl({
-        registrationId: regObj.id,
+        registrationId: regObj.id || regObj._id?.toString(),
         ticketCode: regObj.ticketCode,
-        eventId: event ? event._id.toString() : '',
+        eventId: eventIdStr,
         eventTitle: event ? event.title : '',
         attendeeName: user ? user.name : '',
         ticketType: ticketType ? ticketType.name : '',
@@ -235,9 +242,9 @@ export class RegistrationService {
 
       return {
         ...regObj,
-        event: event ? { id: event._id.toString(), title: event.title, venue: event.venue, startDate: event.startDate, endDate: event.endDate } : null,
-        ticketType: ticketType ? { id: ticketType._id.toString(), name: ticketType.name, price: ticketType.price } : null,
-        user: user ? { id: user._id.toString(), name: user.name, email: user.email } : null,
+        event: event ? { id: eventIdStr, title: event.title, venue: event.venue, startDate: event.startDate, endDate: event.endDate } : null,
+        ticketType: ticketType ? { id: ticketTypeIdStr, name: ticketType.name, price: ticketType.price } : null,
+        user: user ? { id: userIdStr, name: user.name, email: user.email } : null,
         qrCodeUrl,
       };
     } else {
@@ -278,7 +285,7 @@ export class RegistrationService {
       const reg = await MongoRegistration.findById(registrationId);
       if (!reg) throw new AppError('Registration ticket not found', 404);
 
-      const isOwner = reg.userId.toString() === userId;
+      const isOwner = (reg.userId as any).toString() === userId;
       const isAdmin = userRole === Role.ADMIN;
 
       if (!isOwner && !isAdmin) {
@@ -351,7 +358,7 @@ export class RegistrationService {
       if (!reg) throw new AppError('Invalid ticket code', 404);
 
       const event = reg.eventId as any;
-      const isOrganizer = event && event.organizerId && event.organizerId.toString() === userId;
+      const isOrganizer = event && event.organizerId && (event.organizerId._id || event.organizerId).toString() === userId;
       const isAdmin = userRole === Role.ADMIN;
 
       if (!isOrganizer && !isAdmin) {
@@ -376,9 +383,9 @@ export class RegistrationService {
 
       return {
         ...regObj,
-        user: user ? { id: user._id.toString(), name: user.name, email: user.email } : null,
-        event: event ? { id: event._id.toString(), title: event.title } : null,
-        ticketType: ticketType ? { id: ticketType._id.toString(), name: ticketType.name } : null,
+        user: user ? { id: (user.id || user._id)?.toString(), name: user.name, email: user.email } : null,
+        event: event ? { id: (event.id || event._id)?.toString(), title: event.title } : null,
+        ticketType: ticketType ? { id: (ticketType.id || ticketType._id)?.toString(), name: ticketType.name } : null,
       };
     } else {
       const registration = await prisma.registration.findUnique({

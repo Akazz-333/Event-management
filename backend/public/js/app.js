@@ -65,7 +65,7 @@ function showToast(message, type = 'success') {
 }
 
 // Navigation & View Router
-function navigateTo(view) {
+function navigateTo(view, param = null) {
   state.currentView = view;
   document.querySelectorAll('main > section').forEach(sec => sec.style.display = 'none');
   document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
@@ -76,8 +76,128 @@ function navigateTo(view) {
   const viewSec = document.getElementById(`view-${view}`);
   if (viewSec) viewSec.style.display = 'block';
 
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+
   if (view === 'explore') loadEvents();
   if (view === 'tickets') loadMyTickets();
+  if (view === 'event-detail' && param) loadEventDetail(param);
+}
+
+function showEventDetail(eventId) {
+  navigateTo('event-detail', eventId);
+}
+
+// Load & Render Event Details Page
+async function loadEventDetail(eventId) {
+  const container = document.getElementById('event-detail-container');
+  if (!container) return;
+
+  container.innerHTML = '<div style="text-align:center; padding: 4rem;"><i class="ri-loader-4-line ri-spin" style="font-size: 2.5rem; color: var(--primary);"></i><p style="margin-top: 0.5rem; color: var(--text-secondary);">Loading event details...</p></div>';
+
+  try {
+    const res = await apiCall(`/events/${eventId}`, 'GET', null, false);
+    const ev = res.data;
+
+    const startDateObj = new Date(ev.startDate);
+    const endDateObj = new Date(ev.endDate);
+    const formattedStartDate = startDateObj.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+    const formattedStartTime = startDateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    const formattedEndTime = endDateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+
+    const minPrice = ev.ticketTypes && ev.ticketTypes.length > 0 
+      ? Math.min(...ev.ticketTypes.map(t => t.price)) 
+      : 0;
+
+    container.innerHTML = `
+      <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem; align-items: start;">
+        
+        <!-- Left Main Event Information Column -->
+        <div class="glass" style="padding: 2.5rem; border-radius: var(--radius-xl);">
+          <div style="display: flex; gap: 0.5rem; align-items: center; margin-bottom: 1rem;">
+            <span class="card-badge" style="margin-bottom: 0;">${ev.category}</span>
+            <span class="role-tag role-ORGANIZER">${ev.status || 'PUBLISHED'}</span>
+          </div>
+
+          <h1 style="font-size: 2.2rem; font-weight: 800; line-height: 1.25; margin-bottom: 1.25rem; color: var(--text-primary);">
+            ${ev.title}
+          </h1>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; padding: 1.25rem; background: var(--bg-subtle); border-radius: var(--radius-md); margin-bottom: 2rem; border: 1px solid var(--border);">
+            <div style="display: flex; gap: 0.75rem; align-items: flex-start;">
+              <i class="ri-calendar-event-line" style="font-size: 1.5rem; color: var(--primary);"></i>
+              <div>
+                <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Date & Time</div>
+                <div style="font-weight: 700; font-size: 0.95rem;">${formattedStartDate}</div>
+                <div style="font-size: 0.85rem; color: var(--text-secondary);">${formattedStartTime} - ${formattedEndTime}</div>
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 0.75rem; align-items: flex-start;">
+              <i class="ri-map-pin-2-line" style="font-size: 1.5rem; color: var(--accent-cyan);"></i>
+              <div>
+                <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Location / Venue</div>
+                <div style="font-weight: 700; font-size: 0.95rem;">${ev.venue}</div>
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-bottom: 2rem;">
+            <h3 style="font-size: 1.3rem; font-weight: 800; margin-bottom: 0.75rem;"><i class="ri-file-text-line" style="color: var(--primary);"></i> Event Overview</h3>
+            <p style="font-size: 1.05rem; color: var(--text-secondary); line-height: 1.7; white-space: pre-line;">
+              ${ev.description}
+            </p>
+          </div>
+
+          <div style="border-top: 1px solid var(--border); padding-top: 1.5rem; display: flex; align-items: center; gap: 1rem;">
+            <div style="width: 48px; height: 48px; background: var(--primary-light); color: var(--primary); border-radius: 50%; display:flex; align-items:center; justify-content:center; font-size: 1.3rem; font-weight: 800;">
+              <i class="ri-user-star-line"></i>
+            </div>
+            <div>
+              <div style="font-size: 0.8rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Hosted By</div>
+              <div style="font-weight: 700; font-size: 1rem;">${ev.organizer ? ev.organizer.name : 'Event Organizer'}</div>
+              <div style="font-size: 0.85rem; color: var(--text-secondary);">${ev.organizer ? ev.organizer.email : ''}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column Ticket Pass Booking Sidebar -->
+        <div class="glass" style="padding: 2rem; border-radius: var(--radius-xl); position: sticky; top: 90px;">
+          <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Ticket Pricing</div>
+          <div style="font-size: 2rem; font-weight: 800; color: var(--text-primary); margin-bottom: 1.25rem;">
+            ${minPrice === 0 ? 'Free' : 'Starting at $' + minPrice.toFixed(2)}
+          </div>
+
+          <h4 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem;">Available Ticket Passes</h4>
+
+          <div style="display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1.5rem;">
+            ${ev.ticketTypes && ev.ticketTypes.length > 0 ? ev.ticketTypes.map(tier => {
+              const isSoldOut = tier.soldCount >= tier.capacity;
+              const remaining = tier.capacity - tier.soldCount;
+              return `
+                <div style="background: var(--bg-subtle); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border);">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+                    <span style="font-weight: 700; font-size: 1rem;">${tier.name}</span>
+                    <span style="font-weight: 800; font-size: 1.1rem; color: var(--primary);">$${tier.price.toFixed(2)}</span>
+                  </div>
+                  <div style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 0.75rem;">${remaining} seats left of ${tier.capacity}</div>
+                  <button class="btn btn-primary btn-sm" style="width: 100%;" ${isSoldOut ? 'disabled' : ''} onclick="submitTicketBooking('${ev.id}', '${tier.id}')">
+                    ${isSoldOut ? 'Sold Out' : 'Book Pass Now'}
+                  </button>
+                </div>
+              `;
+            }).join('') : '<p style="color: var(--text-muted);">No ticket tiers published.</p>'}
+          </div>
+
+          <p style="font-size: 0.8rem; color: var(--text-muted); text-align: center;">
+            <i class="ri-shield-check-line" style="color: var(--accent-emerald);"></i> Instant Digital QR Code Pass delivered to your ticket wallet upon booking.
+          </p>
+        </div>
+
+      </div>
+    `;
+  } catch (err) {
+    container.innerHTML = '<div style="text-align:center; padding: 3rem; color: #ef4444;"><p>Failed to load event details.</p></div>';
+  }
 }
 
 // Render Auth Header in Navbar
@@ -236,10 +356,10 @@ async function loadEvents() {
       const formattedDate = new Date(ev.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
       return `
-        <div class="event-card">
+        <div class="event-card" style="cursor: pointer;" onclick="showEventDetail('${ev.id}')">
           <div>
             <span class="card-badge">${ev.category}</span>
-            <h3 class="event-title">${ev.title}</h3>
+            <h3 class="event-title" style="color: var(--primary); transition: color 0.2s;">${ev.title}</h3>
             <div class="event-meta">
               <div class="meta-item"><i class="ri-calendar-line" style="color: var(--primary);"></i> ${formattedDate}</div>
               <div class="meta-item"><i class="ri-map-pin-line" style="color: var(--accent-cyan);"></i> ${ev.venue}</div>
@@ -251,7 +371,7 @@ async function loadEvents() {
           </div>
           <div class="event-footer">
             <div class="price-tag">${minPrice === 0 ? 'Free' : '$' + minPrice.toFixed(2)}</div>
-            <button class="btn btn-primary btn-sm" onclick="openBookingModal('${ev.id}')"><i class="ri-ticket-line"></i> Book Ticket</button>
+            <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); showEventDetail('${ev.id}')"><i class="ri-information-line"></i> View Details</button>
           </div>
         </div>
       `;
@@ -325,6 +445,12 @@ async function openBookingModal(eventId) {
 
 // Submit Ticket Booking
 async function submitTicketBooking(eventId, ticketTypeId) {
+  if (!state.token) {
+    navigateTo('login');
+    showToast('Please sign in to book tickets', 'error');
+    return;
+  }
+
   try {
     await apiCall('/registrations', 'POST', { eventId, ticketTypeId });
     closeModal('book-modal');
@@ -511,6 +637,8 @@ function handleBackdropClick(e, modalId) {
 
 // EXPLICITLY BIND ALL GLOBAL FUNCTIONS TO WINDOW SCOPE
 window.navigateTo = navigateTo;
+window.showEventDetail = showEventDetail;
+window.loadEventDetail = loadEventDetail;
 window.renderAuthHeader = renderAuthHeader;
 window.handleAuthSubmit = handleAuthSubmit;
 window.handleViewAuthSubmit = handleViewAuthSubmit;
