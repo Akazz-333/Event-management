@@ -17,7 +17,17 @@ function getStoredToken() {
 function getStoredTickets() {
   try {
     const raw = localStorage.getItem('myTickets');
-    return raw && raw !== 'undefined' && raw !== 'null' ? JSON.parse(raw) : [];
+    const user = getStoredUser();
+    const userEmail = user?.email || 'default';
+    const userRaw = localStorage.getItem('myTickets_' + userEmail);
+    const globalList = raw && raw !== 'undefined' && raw !== 'null' ? JSON.parse(raw) : [];
+    const userList = userRaw && userRaw !== 'undefined' && userRaw !== 'null' ? JSON.parse(userRaw) : [];
+    
+    const map = new Map();
+    [...globalList, ...userList].forEach(t => {
+      if (t && (t.ticketCode || t.id)) map.set(t.ticketCode || t.id, t);
+    });
+    return Array.from(map.values());
   } catch (e) {
     return [];
   }
@@ -383,6 +393,7 @@ async function handleAuthSubmit(e) {
 
     state.token = authToken;
     state.user = authUser;
+    state.myTickets = getStoredTickets();
     localStorage.setItem('token', state.token);
     localStorage.setItem('user', JSON.stringify(state.user));
 
@@ -414,6 +425,7 @@ async function handleAuthSubmit(e) {
 
     state.token = authToken;
     state.user = authUser;
+    state.myTickets = getStoredTickets();
     localStorage.setItem('token', state.token);
     localStorage.setItem('user', JSON.stringify(state.user));
 
@@ -460,6 +472,7 @@ async function handleViewAuthSubmit(e) {
 
     state.token = authToken;
     state.user = authUser;
+    state.myTickets = getStoredTickets();
     localStorage.setItem('token', state.token);
     localStorage.setItem('user', JSON.stringify(state.user));
 
@@ -490,6 +503,7 @@ async function handleViewAuthSubmit(e) {
 
     state.token = authToken;
     state.user = authUser;
+    state.myTickets = getStoredTickets();
     localStorage.setItem('token', state.token);
     localStorage.setItem('user', JSON.stringify(state.user));
 
@@ -646,7 +660,7 @@ function handleSearch() {
 
 // Open Booking Modal
 async function openBookingModal(eventId) {
-  if (!state.token) {
+  if (!state.token && !state.user) {
     navigateTo('login');
     showToast('Please sign in to book tickets', 'error');
     return;
@@ -670,7 +684,7 @@ async function openBookingModal(eventId) {
     </div>
     
     <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1.5rem;">
-      ${ev.ticketTypes.map(tier => `
+      ${(ev.ticketTypes || [{ name: 'Standard Cinema Pass', price: 14.99 }]).map(tier => `
         <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-subtle);">
           <div>
             <div style="font-weight: 700;">${tier.name}</div>
@@ -690,7 +704,7 @@ async function confirmBooking(ticketTypeId) {
   if (!state.selectedEventForBooking) return;
 
   const ev = state.selectedEventForBooking;
-  const selectedTier = ev.ticketTypes.find(t => (t.id || t.name) === ticketTypeId) || ev.ticketTypes[0] || { name: 'Standard Pass', price: 14.99 };
+  const selectedTier = (ev.ticketTypes || []).find(t => (t.id || t.name) === ticketTypeId) || (ev.ticketTypes || [])[0] || { name: 'Standard Cinema Pass', price: 14.99 };
 
   const newTicket = {
     id: 'tkt-' + Date.now(),
@@ -711,6 +725,13 @@ async function confirmBooking(ticketTypeId) {
     }
   };
 
+  if (!state.myTickets) state.myTickets = [];
+  state.myTickets.unshift(newTicket);
+
+  const userEmail = state.user?.email || 'default';
+  localStorage.setItem('myTickets', JSON.stringify(state.myTickets));
+  localStorage.setItem('myTickets_' + userEmail, JSON.stringify(state.myTickets));
+
   try {
     const res = await apiCall('/registrations', 'POST', {
       eventId: ev.id,
@@ -720,14 +741,11 @@ async function confirmBooking(ticketTypeId) {
     if (res && res.data && res.data.registration) {
       const serverTicket = res.data.registration;
       state.myTickets.unshift(serverTicket);
-    } else {
-      state.myTickets.unshift(newTicket);
+      localStorage.setItem('myTickets', JSON.stringify(state.myTickets));
+      localStorage.setItem('myTickets_' + userEmail, JSON.stringify(state.myTickets));
     }
-  } catch (err) {
-    state.myTickets.unshift(newTicket);
-  }
+  } catch (err) {}
 
-  localStorage.setItem('myTickets', JSON.stringify(state.myTickets));
   closeModal('book-modal');
   showToast('🎉 Digital Pass Booked & Added to Wallet!');
   navigateTo('tickets');
@@ -738,7 +756,7 @@ async function loadMyTickets() {
   const grid = document.getElementById('my-tickets-grid');
   if (!grid) return;
 
-  if (!state.token) {
+  if (!state.token && !state.user) {
     grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 3rem; color: var(--text-muted);"><i class="ri-user-lock-line" style="font-size: 3rem; display:block; margin-bottom: 0.5rem;"></i><p>Sign in to view your digital ticket wallet.</p><button class="btn btn-primary" style="margin-top: 1rem;" onclick="navigateTo(\'login\')">Sign In Now</button></div>';
     return;
   }
